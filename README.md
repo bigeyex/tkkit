@@ -23,7 +23,8 @@ app.run()
 
 # TODO
 
-[] allow change element on the fly
-[] support align of widgets
-[] common widgets
-[] picker widgets
+- [] Inputs, read from inputs
+- [] allow change element on the fly
+- [] support align of widgets
+- [] common widgets
+- [] picker widgets
