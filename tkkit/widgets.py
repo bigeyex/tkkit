@@ -22,7 +22,7 @@ class Widget:
         self.name_registry = parent.name_registry
         self.parent = parent
         self.var_to_bind = self.bind_var()
-        if self.name is not None:
+        if self.name is not None and self.name not in self.name_registry:
             self.name_registry[self.name] = self
         self.el = self.get_widget(parent)
         return self.el
@@ -69,7 +69,7 @@ class Button(Widget):
         return ttk.Button(parent.el, text=self.text, command=command, **self.styles)
     
 class Label(Widget):
-    def __init__(self, text="Label", name=None, on_click=None, **kwargs):
+    def __init__(self, text="Label", name=None, **kwargs):
         self.text = text
         super().__init__(name=name, **kwargs)
 
@@ -77,7 +77,7 @@ class Label(Widget):
         return ttk.Label(parent.el, text=self.text, **self.styles)
     
 class TextBox(Widget):
-    def __init__(self, text="", password=False, lines=1, scrollable=True, name=None, on_click=None, **kwargs):
+    def __init__(self, text="", password=False, lines=1, scrollable=True, name=None, **kwargs):
         self.text = text
         self.password = password
         self.lines = lines
@@ -92,6 +92,13 @@ class TextBox(Widget):
             return self.el.get('1.0', 'end')
         else:
             return self.var_to_bind.get()
+        
+    def set_value(self, value):
+        if self.lines > 1:
+            self.el.delete(1.0, 'end')
+            self.el.insert("end", value)
+        else:
+            self.var_to_bind.set(value)
 
     def get_widget(self, parent):
         show = '*' if self.password else None
@@ -104,3 +111,64 @@ class TextBox(Widget):
                 return tk.Text(parent.el, height=self.lines, **self.styles)
         else:
             return ttk.Entry(parent.el, textvariable=self.var_to_bind, show=show, **self.styles)
+
+class CheckBox(Widget):
+    def __init__(self, text="CheckBox", name=None, checked=False, on_click=None, **kwargs):
+        self.text = text
+        self.on_click = on_click
+        self.checked = checked
+        super().__init__(name=name, **kwargs)
+
+    def bind_var(self):
+        var_to_bind = tk.IntVar()
+        if self.checked:
+            var_to_bind.set(1)
+        return var_to_bind
+    
+    def get_value(self):
+        return self.var_to_bind.get() == 1
+    
+    def set_value(self, value):
+        self.var_to_bind.set(value == 1)
+
+    def get_widget(self, parent):
+        return ttk.Checkbutton(parent.el, text=self.text, command=self.on_click, variable=self.var_to_bind, **self.styles)
+    
+class RadioButton(Widget):
+    def __init__(self, text="RadioButton", value=None, name=None, selected=False, on_click=None, **kwargs):
+        if value is None:
+           value = text 
+        self.text = text
+        self.on_click = on_click
+        self.value = value
+        self.selected = selected
+        super().__init__(name=name, **kwargs)
+
+    def bind_var(self):
+        if self.name not in self.name_registry or self.name_registry[self.name].var_to_bind is None:
+            var_to_bind = tk.StringVar()
+        else:
+            var_to_bind = self.name_registry[self.name].var_to_bind
+        if self.selected:
+            var_to_bind.set(self.value)
+        return var_to_bind
+
+    def get_widget(self, parent):
+        return ttk.Radiobutton(parent.el, text=self.text, value=self.value, command=self.on_click, variable=self.var_to_bind, **self.styles)
+    
+class ComboBox(Widget):
+    def __init__(self, values=(), name=None, selected=None, on_change=None, **kwargs):
+        self.values = values
+        self.on_change = on_change
+        self.selected = selected
+        super().__init__(name=name, **kwargs)
+
+    def bind_var(self):
+        return tk.StringVar(value=self.selected)
+
+    def get_widget(self, parent):
+        widget = ttk.Combobox(parent.el, values=self.values, textvariable=self.var_to_bind, **self.styles)
+        if self.on_change is not None:
+            widget.bind('<<ComboboxSelected>>', lambda val:self.on_change())
+        return widget
+    
