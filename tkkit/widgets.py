@@ -172,3 +172,37 @@ class ComboBox(Widget):
             widget.bind('<<ComboboxSelected>>', lambda val:self.on_change())
         return widget
     
+class ListBox(Widget):
+    def __init__(self, values=(), name=None, lines=5, selected=None, multiple=False, on_change=None, **kwargs):
+        self.values = values
+        self.on_change = on_change
+        self.selected = selected
+        self.lines = lines
+        self.multiple = multiple
+        super().__init__(name=name, **kwargs)
+
+    def bind_var(self):
+        return tk.StringVar(value=self.values)
+    
+    def get_value(self):
+        selected_indices = self.el.curselection()
+        if self.multiple:
+            return [self.el.get(i) for i in selected_indices]
+        else:
+            return self.el.get(selected_indices[0])
+    
+    def set_value(self, value):
+        for i in range(len(self.values)):
+            if self.multiple and self.values[i] in value:
+                self.el.selection_set(i)
+            elif not self.multiple and self.values[i] == value:
+                self.el.selection_set(i)
+            else:
+                self.el.selection_clear(i)
+
+    def get_widget(self, parent):
+        select_mode = tk.EXTENDED if self.multiple else tk.BROWSE
+        widget = tk.Listbox(parent.el, height=self.lines, listvariable=self.var_to_bind, selectmode=select_mode, **self.styles)
+        if self.on_change is not None:
+            widget.bind('<<ListboxSelect>>', lambda val:self.on_change())
+        return widget

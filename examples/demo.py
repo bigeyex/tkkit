@@ -20,10 +20,17 @@ def radio_click():
 def combo_change():
     print(app.get_value('combo1'))
 
+def listbox_change():
+    print(app.get_value('listbox1'))
+
+def select_list_button():
+    app.set_value('listbox1', ('third', 'second'))
+
 window = Window([
     Row([Button('One', on_click=set_button_2), Button('Two', name="button_2"), Button('Three', on_click=button_3_click)]),
     Row([
-        Column([Button('One'), Label('Two'),
+        Column([Button('Select List', on_click=select_list_button), Label('Two'),
+                ListBox(('first', 'second', 'third', '4th', '5th'), lines=3, name="listbox1", multiple=True, on_change=listbox_change),
                 CheckBox('Checkbox One', name="check1", on_click=checkbox_click, checked=True),
                 ComboBox(values=('uno', 'dos', 'tres'), selected='tres', on_change=combo_change, name="combo1"),
                 RadioButton('Radio 1', 'radio1', name="radio1", on_click=radio_click),
