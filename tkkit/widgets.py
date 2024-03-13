@@ -206,3 +206,42 @@ class ListBox(Widget):
         if self.on_change is not None:
             widget.bind('<<ListboxSelect>>', lambda val:self.on_change())
         return widget
+    
+class Slider(Widget):
+    def __init__(self, min=0, max=100, name=None, on_change=None, **kwargs):
+        self.min = min
+        self.max = max
+        self.on_change = on_change
+        super().__init__(name=name, **kwargs)
+
+    def bind_var(self):
+        return tk.DoubleVar()
+
+    def get_widget(self, parent):
+        widget = ttk.Scale(parent.el, from_=self.min, to=self.max, variable=self.var_to_bind, **self.styles)
+        if self.on_change is not None:
+            widget.bind('<ButtonRelease-1>', lambda val:self.on_change())
+        return widget
+
+class NumericUpDown(Widget):
+    def __init__(self, min=0, max=100, name=None, on_change=None, **kwargs):
+        self.min = min
+        self.max = max
+        self.on_change = on_change
+        super().__init__(name=name, **kwargs)
+
+    def bind_var(self):
+        return tk.IntVar()
+
+    def get_widget(self, parent):
+        return ttk.Spinbox(parent.el, from_=self.min, to=self.max, textvariable=self.var_to_bind, command=self.on_change, **self.styles)
+    
+class ProgressBar(Widget):
+    def get_value(self):
+        return self.el['value']
+    
+    def set_value(self, value):
+        self.el['value'] = value
+
+    def get_widget(self, parent):
+        return ttk.Progressbar(parent.el, **self.styles)

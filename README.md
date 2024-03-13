@@ -22,7 +22,7 @@ app.run()
 
 
 # TODO
-- [] common widgets: Slider, Spinbox, Progressbar, LabelFrame, Tabs
+- [] common widgets:  LabelFrame, Tabs
 - [] support align of widgets
 - [] picker widgets
 - [] Release lib
