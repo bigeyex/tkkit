@@ -1,16 +1,22 @@
 from tkinter import *
 from tkinter import ttk
 
+
+
 class TKApp:
     def __init__(self, title=None):
         self.el = Tk()
+        self.align = None
+        self.vertical_align = None
         if title is not None:
             self.el.title(title)
 
     def show(self, window):
         self.name_registry = {}
         main_el = window.show(self)
-        main_el.grid(row=0, column=0)
+        self.el.columnconfigure(0, weight=1)
+        self.el.rowconfigure(0, weight=1)
+        main_el.grid(row=0, column=0, sticky="wens")
 
     def replace(self, widget_name, new_widget):
         old_widget = self.name_registry[widget_name]

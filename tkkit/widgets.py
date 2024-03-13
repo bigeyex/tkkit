@@ -3,10 +3,23 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter import ttk
 import threading
 
+def get_sticky(align, vertical_align):
+    align_table = {'left': 'w', 'right': 'e', 'fill': 'we'}
+    vertical_align_table = {'top': 'n', 'bottom': 's', 'fill': 'ns'}
+    sticky = align_table[align] if align in align_table else ''
+    sticky = sticky + (vertical_align_table[vertical_align] if vertical_align in vertical_align_table else '')
+    if sticky == '':
+        return None
+    else:
+        return sticky
+
 class Widget:
     # override if there's additional arguments
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None, align=None, vertical_align=None, expand=0, **kwargs):
         self.styles = kwargs
+        self.align = align
+        self.vertical_align = vertical_align
+        self.expand = expand
         self.name = name
 
     def bind_var(self): # override if there's binding variable, none for skipping
@@ -20,6 +33,10 @@ class Widget:
 
     def show(self, parent): # should never be overridden
         self.name_registry = parent.name_registry
+        if self.align is None and parent.align != 'fill':
+            self.align = parent.align
+        if self.vertical_align is None and parent.align != 'fill':
+            self.vertical_align = parent.vertical_align
         self.parent = parent
         self.var_to_bind = self.bind_var()
         if self.name is not None and self.name not in self.name_registry:
@@ -32,23 +49,36 @@ class Widget:
 
 
 class Column(Widget):
-    def __init__(self, children=[], name=None, **kwargs):
+    def __init__(self, children=[], expand=1, align='fill', name=None, **kwargs):
         self.children = children
-        super().__init__(name=name, **kwargs)
+        super().__init__(name=name, expand=expand, align=align, **kwargs)
     
     def get_widget(self, parent):
         self.el = tk.Frame(parent.el, **self.styles)
+        self.el.columnconfigure(0, weight=1)
         for index in range(0, len(self.children)):
             child_el = self.children[index].show(self)
-            child_el.grid(row=index, column=0)
+            if self.children[index].expand != 0:
+                self.el.rowconfigure(index, weight=self.children[index].expand)
+            print(type(self.children[index]), self.children[index].align, 
+                  get_sticky(self.children[index].align, self.children[index].vertical_align))
+            child_el.grid(row=index, column=0, 
+                          sticky=get_sticky(self.children[index].align, self.children[index].vertical_align))
         return self.el
             
 class Row(Column):
+    def __init__(self, children=[], expand=0, align='fill', name=None, **kwargs):
+        super().__init__(children, expand=expand, align=align, name=name, **kwargs)
+
     def get_widget(self, parent):
         self.el = tk.Frame(parent.el, **self.styles)
+        self.el.rowconfigure(0, weight=1)
         for index in range(0, len(self.children)):
             child_el = self.children[index].show(self)
-            child_el.grid(row=0, column=index)
+            if self.children[index].expand != 0:
+                self.el.columnconfigure(index, weight=self.children[index].expand)
+            child_el.grid(row=0, column=index, 
+                          sticky=get_sticky(self.children[index].align, self.children[index].vertical_align))
         return self.el
 
 class Window(Column):
