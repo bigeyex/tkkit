@@ -33,7 +33,9 @@ def numeric_change():
     app.set_value('progress1', app.get_value('numeric1'))
 
 window = Window([
-    Row([Button('One', on_click=set_button_2), Button('Two', name="button_2"), Button('Three', on_click=button_3_click)], align='center', bg='yellow'),
+    Row([Button('One', on_click=set_button_2), 
+         Button('Two', name="button_2"), 
+         Button('Three', on_click=button_3_click, padding=25)], align='center', bg='yellow'),
     Row([
         Column([Button('Select List', on_click=select_list_button), Label('Two'),
                 ProgressBar(name='progress1', expand=1),
@@ -43,11 +45,11 @@ window = Window([
                 CheckBox('Checkbox One', name="check1", on_click=checkbox_click, checked=True, align="right"),
                 ComboBox(values=('uno', 'dos', 'tres'), selected='tres', on_change=combo_change, name="combo1"),
                 RadioButton('Radio 1', 'radio1', name="radio1", on_click=radio_click),
-                RadioButton('Radio 2', name="radio1", on_click=radio_click, selected=True),
+                RadioButton('Radio 2', name="radio1", on_click=radio_click, selected=True, padding=(3, 4)),
                 RadioButton('Radio 3', name="radio1", on_click=radio_click),
-                ], name='col1', align="left", expand=0, bg='red'),
+                ], name='col1', align="left", expand=0, bg='red', gap=5),
         Column([TextBox('One', name="text1")], expand=1, vertical_align="top"),
-        Column([TextBox('', lines=5, password=True, name='text2'), Button('Two'), Button('Three')], width=50, align="right"),
+        Column([GroupBox('Group 1', [TextBox('', lines=5, password=True, name='text2'), Button('Two'), Button('Three')])], width=50, align="right"),
     ])
 ], bg='green')
 

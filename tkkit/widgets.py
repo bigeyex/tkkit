@@ -15,12 +15,15 @@ def get_sticky(align, vertical_align):
 
 class Widget:
     # override if there's additional arguments
-    def __init__(self, name=None, align=None, vertical_align=None, expand=0, **kwargs):
+    def __init__(self, name=None, align=None, vertical_align=None, expand=0, padding=(0, 0), **kwargs):
         self.styles = kwargs
         self.align = align
         self.vertical_align = vertical_align
         self.expand = expand
         self.name = name
+        self.padding = padding
+        if isinstance(padding, int): # padding could be int, or (int, int) as (padx, pady)
+            self.padding = (padding, padding)
 
     def bind_var(self): # override if there's binding variable, none for skipping
         return None
@@ -49,8 +52,9 @@ class Widget:
 
 
 class Column(Widget):
-    def __init__(self, children=[], expand=1, align='fill', name=None, **kwargs):
+    def __init__(self, children=[], expand=1, align='fill', name=None, gap=0, **kwargs):
         self.children = children
+        self.gap = gap
         super().__init__(name=name, expand=expand, align=align, **kwargs)
     
     def get_widget(self, parent):
@@ -60,9 +64,8 @@ class Column(Widget):
             child_el = self.children[index].show(self)
             if self.children[index].expand != 0:
                 self.el.rowconfigure(index, weight=self.children[index].expand)
-            print(type(self.children[index]), self.children[index].align, 
-                  get_sticky(self.children[index].align, self.children[index].vertical_align))
-            child_el.grid(row=index, column=0, 
+            padding = self.children[index].padding
+            child_el.grid(row=index, column=0, padx=int(padding[1]+self.gap/2), pady=int(padding[0]+self.gap/2),
                           sticky=get_sticky(self.children[index].align, self.children[index].vertical_align))
         return self.el
             
@@ -77,7 +80,8 @@ class Row(Column):
             child_el = self.children[index].show(self)
             if self.children[index].expand != 0:
                 self.el.columnconfigure(index, weight=self.children[index].expand)
-            child_el.grid(row=0, column=index, 
+            padding = self.children[index].padding
+            child_el.grid(row=0, column=index, padx=int(padding[1]+self.gap/2), pady=int(padding[0]+self.gap/2),
                           sticky=get_sticky(self.children[index].align, self.children[index].vertical_align))
         return self.el
 
@@ -275,3 +279,17 @@ class ProgressBar(Widget):
 
     def get_widget(self, parent):
         return ttk.Progressbar(parent.el, **self.styles)
+    
+class GroupBox(Widget):
+    def __init__(self, text='Frame', children=[], name=None, **kwargs):
+        self.children = children
+        self.text = text
+        super().__init__(name=name, **kwargs)
+
+    def get_widget(self, parent):
+        self.el = ttk.LabelFrame(parent.el, text=self.text, **self.styles)
+        self.column = Column(self.children, **self.styles).show(self)
+        self.el.columnconfigure(0, weight=1)
+        self.el.rowconfigure(0, weight=1)
+        self.column.grid(row=0, column=0, sticky="wens")
+        return self.el

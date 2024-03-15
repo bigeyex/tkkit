@@ -22,8 +22,8 @@ app.run()
 
 
 # TODO
-- [] common widgets:  LabelFrame, Tabs
-- [] support align of widgets
+- [] common widgets:  Tabs
 - [] picker widgets
+- [] canvas, image
 - [] Release lib
 - [] TreeView
