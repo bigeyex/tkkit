@@ -1,22 +1,25 @@
-from tkkit import TKApp, Button, Window, Row, Column, Label, TextBox
+from tkkit import *
 
 
 app = TKApp('My App')
 
-def set_button_2():
-    app.set_text('button_2', "changed")
-    print(app.get_value('text1'))
-    app.set_value('text1', 'changed')
+def copy_text():
+    app.set_text("label1", app.get_value("text_box"))
 
-def button_3_click():
-    app.replace('col1', Column([Label('This have been changed')]))
+def get_label_value():
+    app.set_text("label2", app.get_value("radios"))
 
 window = Window([
-    Row([Button('One', on_click=set_button_2), Button('Two'), Button('Three')]),
+    Row([Button('Get Text', on_click=copy_text), 
+         Button('Get Radio Value', on_click=get_label_value)]),
     Row([
-        Column([Button('One'), Label('Two')], name='col1'),
-        Column([TextBox('One', name="text1")]),
-        Column([TextBox('', password=True), Button('Two'), Button('Three')]),
+        Column([TextBox("", name="text_box"), Label('Press Button', name="label1")]),
+        Column([
+            Label('Radio Value', name="label2"),
+            RadioButton('Radio 1', 'radio1', name="radios"),
+            RadioButton('Radio 2', name="radios"),
+            RadioButton('Radio 3', name="radios"),
+        ]),
     ])
 ])
 

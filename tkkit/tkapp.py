@@ -35,6 +35,9 @@ class TKApp:
     def get_value(self, widget_name):
         return self.name_registry[widget_name].get_value()
     
+    def get_tk(self, widget_name):
+        return self.name_registry[widget_name].el
+    
     def set_value(self, widget_name, new_value):
         self.name_registry[widget_name].set_value(new_value)
 

@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from tkinter import ttk
+from tkinter import filedialog 
 import threading
 
 def get_sticky(align, vertical_align):
@@ -293,3 +294,63 @@ class GroupBox(Widget):
         self.el.rowconfigure(0, weight=1)
         self.column.grid(row=0, column=0, sticky="wens")
         return self.el
+    
+class TabControl(Widget):
+    def __init__(self, tabs={'Tab': []}, name=None, **kwargs):
+        self.tabs = tabs
+        super().__init__(name=name, **kwargs)
+
+    def get_widget(self, parent):
+        self.el = ttk.Notebook(parent.el, **self.styles)
+        for label, children in self.tabs.items():
+            frame_el = Column(children).show(self)
+            frame_el.pack(fill='both', expand=True)
+            self.el.add(frame_el, text=label)
+        return self.el
+    
+class FilePicker(Widget):
+    def __init__(self, text="Select File...", filetypes=[('All files', '*.*')], multiple=False, dir=False, name=None, **kwargs):
+        self.text = text
+        self.filetypes = filetypes
+        self.multiple = multiple
+        self.dir = dir
+        self.value = None
+        super().__init__(name=name, **kwargs)
+
+    def get_value(self):
+        return self.value
+    
+    def set_value(self, value):
+        raise RuntimeError('FilePicker only supports get_value')
+
+    def on_pick_file(self):
+        if self.dir:
+            self.value = filedialog.askdirectory(title=self.text)
+        elif self.multiple:
+            self.value = filedialog.askopenfilenames(title=self.text, filetypes=self.filetypes)
+        else:
+            self.value = filedialog.askopenfilename(title=self.text, filetypes=self.filetypes)
+        self.label.el['text'] = self.value
+
+    def get_widget(self, parent):
+        self.button = Button(self.text, on_click=self.on_pick_file)
+        self.label = Label('', width=30)
+        return Row([self.button, self.label], **self.styles).show(parent)
+    
+class Canvas(Widget):
+    def get_widget(self, parent):
+        return tk.Canvas(parent.el, **self.styles)
+    
+class PictureBox(Widget):
+    def __init__(self, image=None, name=None, **kwargs):
+        self.image = image
+        super().__init__(name=name, **kwargs)
+
+    def get_value(self):
+        raise RuntimeError('PictureBox only supports set_value')
+    
+    def set_value(self, value):
+        self.el['image'] = value
+
+    def get_widget(self, parent):
+        return ttk.Label(parent.el, image=self.image, **self.styles)

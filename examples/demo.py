@@ -32,6 +32,8 @@ def slider_change():
 def numeric_change():
     app.set_value('progress1', app.get_value('numeric1'))
 
+photo = tk.PhotoImage(file='./examples/demo_image.png')
+
 window = Window([
     Row([Button('One', on_click=set_button_2), 
          Button('Two', name="button_2"), 
@@ -48,8 +50,13 @@ window = Window([
                 RadioButton('Radio 2', name="radio1", on_click=radio_click, selected=True, padding=(3, 4)),
                 RadioButton('Radio 3', name="radio1", on_click=radio_click),
                 ], name='col1', align="left", expand=0, bg='red', gap=5),
-        Column([TextBox('One', name="text1")], expand=1, vertical_align="top"),
-        Column([GroupBox('Group 1', [TextBox('', lines=5, password=True, name='text2'), Button('Two'), Button('Three')])], width=50, align="right"),
+        Column([
+            TabControl({'Main': [TextBox('One', name="text1")], 'Secondary': [TextBox('Two', name="text2")]})
+        ], expand=1, vertical_align="top"), # column 2
+        Column([
+            FilePicker(multiple=True),
+            PictureBox(photo, width=50),
+            GroupBox('Group 1', [TextBox('', lines=5, password=True, name='text2'), Button('Two'), Button('Three')])], width=50, align="right"),
     ])
 ], bg='green')
 
