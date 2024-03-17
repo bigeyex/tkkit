@@ -12,7 +12,7 @@ simplifies ui layouting and provides a consistent api. Its features include:
 - "HTML/React" markup style compoments
 - event callbacks like `on_click` run on a separate thread
 
-learn more at [Wiki/Documentation](https://github.com/bigeyex/tkkit/wiki/Quick-Start)
+learn more at [Wiki/Documentation](https://github.com/bigeyex/tkkit/wiki)
 
 ## Installation 
 
