@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
-
-
+from .widgets import *
+from .exceptions import *
 
 class TKApp:
     def __init__(self, title=None):
@@ -12,6 +12,8 @@ class TKApp:
             self.el.title(title)
 
     def show(self, window):
+        if not isinstance(window, Column):
+            raise LayoutException("root element has to be VStack or HStack") 
         self.name_registry = {}
         main_el = window.show(self)
         self.el.columnconfigure(0, weight=1)

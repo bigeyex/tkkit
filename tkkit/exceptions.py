@@ -1,0 +1,2 @@
+class LayoutException(Exception):
+    pass

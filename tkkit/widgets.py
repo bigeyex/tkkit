@@ -3,6 +3,8 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter import ttk
 from tkinter import filedialog 
 import threading
+from functools import reduce
+from .view_model import ViewModelBindable
 
 def get_sticky(align, vertical_align):
     align_table = {'left': 'w', 'right': 'e', 'fill': 'we'}
@@ -51,47 +53,72 @@ class Widget:
     def get_widget(self, parent):
         raise NotImplementedError('get_widget is not implemented')
 
+class WrapperWidget(Widget):
+    children = []
+
+    def __init__(self, children, **kwargs):
+        self.children = children
+        super().__init__(**kwargs)
 
 class Column(Widget):
-    def __init__(self, children=[], expand=1, align='fill', name=None, gap=0, **kwargs):
+    def __init__(self, children=None, expand=1, align='fill', name=None, gap=0, **kwargs):
         self.children = children
         self.gap = gap
         super().__init__(name=name, expand=expand, align=align, **kwargs)
     
+    def get_real_children(self):
+        def reduce_children(acc, child):
+            if isinstance(child, WrapperWidget):
+                acc.extend(child.children)
+            else:
+                acc.append(child)
+            return acc
+        return reduce(reduce_children, self.children, [])
+
     def get_widget(self, parent):
         self.el = tk.Frame(parent.el, **self.styles)
         self.el.columnconfigure(0, weight=1)
-        for index in range(0, len(self.children)):
-            child_el = self.children[index].show(self)
-            if self.children[index].expand != 0:
-                self.el.rowconfigure(index, weight=self.children[index].expand)
-            padding = self.children[index].padding
+        for index, child in enumerate(self.get_real_children()):
+            if child.expand != 0:
+                self.el.rowconfigure(index, weight=child.expand)
+            padding = child.padding
+            child_el = child.show(self)
             child_el.grid(row=index, column=0, padx=int(padding[1]+self.gap/2), pady=int(padding[0]+self.gap/2),
-                          sticky=get_sticky(self.children[index].align, self.children[index].vertical_align))
+                          sticky=get_sticky(child.align, child.vertical_align))
         return self.el
             
 class Row(Column):
-    def __init__(self, children=[], expand=0, align='fill', name=None, **kwargs):
+    def __init__(self, children=None, expand=0, align='fill', name=None, **kwargs):
         super().__init__(children, expand=expand, align=align, name=name, **kwargs)
 
     def get_widget(self, parent):
         self.el = tk.Frame(parent.el, **self.styles)
         self.el.rowconfigure(0, weight=1)
-        for index in range(0, len(self.children)):
-            child_el = self.children[index].show(self)
-            if self.children[index].expand != 0:
-                self.el.columnconfigure(index, weight=self.children[index].expand)
-            padding = self.children[index].padding
+        for index, child in enumerate(self.get_real_children()):
+            child_el = child.show(self)
+            if child.expand != 0:
+                self.el.columnconfigure(index, weight=child.expand)
+            padding = child.padding
             child_el.grid(row=0, column=index, padx=int(padding[1]+self.gap/2), pady=int(padding[0]+self.gap/2),
-                          sticky=get_sticky(self.children[index].align, self.children[index].vertical_align))
+                          sticky=get_sticky(child.align, child.vertical_align))
         return self.el
 
 class Window(Column):
     pass
 
+class VStack(Column):
+    pass
+
+class HStack(Row):
+    pass
+
 class Button(Widget):
     def __init__(self, text="Button", name=None, on_click=None, **kwargs):
-        self.text = text
+        if isinstance(text, ViewModelBindable):
+            text.on_change(lambda value: self.el.config(text=value))
+            self.text = text.get_value()
+        else:
+            self.text = text
         self.on_click = on_click
         super().__init__(name=name, **kwargs)
 
@@ -105,10 +132,17 @@ class Button(Widget):
     
 class Label(Widget):
     def __init__(self, text="Label", name=None, **kwargs):
-        self.text = text
+        if isinstance(text, ViewModelBindable):
+            text.on_change(lambda value: self.el.config(text=value))
+            self.text = text.get_value()
+        else:
+            self.text = text
         super().__init__(name=name, **kwargs)
 
     def get_widget(self, parent):
+        if isinstance(self.text, ViewModelBindable):
+            self.text.on_change(lambda value: self.el.config(text=value))
+            self.text = self.text.get_value()
         return ttk.Label(parent.el, text=self.text, **self.styles)
     
 class TextBox(Widget):
@@ -120,7 +154,12 @@ class TextBox(Widget):
         super().__init__(name=name, **kwargs)
 
     def bind_var(self):
-        return tk.StringVar()
+        var_to_bind = tk.StringVar()
+        if isinstance(self.text, ViewModelBindable):
+            var_to_bind.set(self.text.get_value())
+            self.text.connect_tk_var(var_to_bind)
+            self.text = self.text.get_value()
+        return var_to_bind
     
     def get_value(self):
         if self.lines > 1:
@@ -156,7 +195,11 @@ class CheckBox(Widget):
 
     def bind_var(self):
         var_to_bind = tk.IntVar()
-        if self.checked:
+        if isinstance(self.checked, ViewModelBindable):
+            var_to_bind.set(self.checked.get_value())
+            self.checked.connect_tk_var(var_to_bind, true_to_one=True)
+            self.checked = self.checked.get_value()
+        elif self.checked:
             var_to_bind.set(1)
         return var_to_bind
     
@@ -192,14 +235,19 @@ class RadioButton(Widget):
         return ttk.Radiobutton(parent.el, text=self.text, value=self.value, command=self.on_click, variable=self.var_to_bind, **self.styles)
     
 class ComboBox(Widget):
-    def __init__(self, values=(), name=None, selected=None, on_change=None, **kwargs):
+    def __init__(self, values=(), selected=None, name=None, on_change=None, **kwargs):
         self.values = values
         self.on_change = on_change
         self.selected = selected
         super().__init__(name=name, **kwargs)
 
     def bind_var(self):
-        return tk.StringVar(value=self.selected)
+        var_to_bind = tk.StringVar(value=self.selected)
+        if isinstance(self.selected, ViewModelBindable):
+            var_to_bind.set(self.selected.get_value())
+            self.selected.connect_tk_var(var_to_bind)
+            self.selected = self.selected.get_value()
+        return var_to_bind
 
     def get_widget(self, parent):
         widget = ttk.Combobox(parent.el, values=self.values, textvariable=self.var_to_bind, **self.styles)
@@ -208,7 +256,7 @@ class ComboBox(Widget):
         return widget
     
 class ListBox(Widget):
-    def __init__(self, values=(), name=None, lines=5, selected=None, multiple=False, on_change=None, **kwargs):
+    def __init__(self, values=(), selected=None, lines=5, multiple=False, name=None, on_change=None, **kwargs):
         self.values = values
         self.on_change = on_change
         self.selected = selected
@@ -217,7 +265,12 @@ class ListBox(Widget):
         super().__init__(name=name, **kwargs)
 
     def bind_var(self):
-        return tk.StringVar(value=self.values)
+        var_to_bind = tk.StringVar(value=self.selected)
+        if isinstance(self.selected, ViewModelBindable):
+            var_to_bind.set(self.selected.get_value())
+            self.selected.connect_tk_var(var_to_bind)
+            self.selected = self.selected.get_value()
+        return var_to_bind
     
     def get_value(self):
         selected_indices = self.el.curselection()
@@ -237,20 +290,26 @@ class ListBox(Widget):
 
     def get_widget(self, parent):
         select_mode = tk.EXTENDED if self.multiple else tk.BROWSE
-        widget = tk.Listbox(parent.el, height=self.lines, listvariable=self.var_to_bind, selectmode=select_mode, **self.styles)
+        self_el = tk.Listbox(parent.el, height=self.lines, listvariable=self.var_to_bind, selectmode=select_mode, **self.styles)
         if self.on_change is not None:
-            widget.bind('<<ListboxSelect>>', lambda val:self.on_change())
-        return widget
+            self_el.bind('<<ListboxSelect>>', lambda val:self.on_change())
+        return self_el
     
 class Slider(Widget):
-    def __init__(self, min=0, max=100, name=None, on_change=None, **kwargs):
+    def __init__(self, min=0, max=100, value=0, name=None, on_change=None, **kwargs):
+        self.value = value
         self.min = min
         self.max = max
         self.on_change = on_change
         super().__init__(name=name, **kwargs)
 
     def bind_var(self):
-        return tk.DoubleVar()
+        var_to_bind = tk.DoubleVar(value=self.value)
+        if isinstance(self.value, ViewModelBindable):
+            var_to_bind.set(self.value.get_value())
+            self.value.connect_tk_var(var_to_bind)
+            self.value = self.value.get_value()
+        return var_to_bind
 
     def get_widget(self, parent):
         widget = ttk.Scale(parent.el, from_=self.min, to=self.max, variable=self.var_to_bind, **self.styles)
