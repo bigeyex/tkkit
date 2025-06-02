@@ -6,6 +6,8 @@ from tkinter import filedialog
 import threading
 from functools import reduce
 from .view_model import ViewModelBindable
+from typing import Self, List, Any, Optional
+from .view_model import ViewModelBindable, BindedListUpdateType
 
 def get_sticky(align:str, vertical_align:str):
     """
@@ -484,3 +486,161 @@ class ShowIf(WrapperWidget):
     def layout_tk_widget(self, parent):
         self.update()
         return None
+    
+    
+class DataTable(Widget):
+    def __init__(
+        self,
+        header: List[str],
+        table_data: List[List[Any]],
+        name=None,
+        selected_item: Optional[Any | ViewModelBindable] = None,
+        selected_index: Optional[int | ViewModelBindable] = None,
+        **kwargs
+    ):
+        self.header = header
+        self.table_data = table_data
+        self._selected_item = selected_item
+        self._selected_index = selected_index
+        super().__init__(name=name, **kwargs)
+
+        # Check if table_data is bindable
+        if isinstance(self.table_data, ViewModelBindable):
+            self.table_data.on_change(self._handle_table_data_change)
+            self.table_data = self.table_data.get_value()
+
+        # Check if header is bindable
+        if isinstance(self.header, ViewModelBindable):
+            self.header.on_change(self._update_header)
+            self.header = self.header.get_value()
+
+        # Check if selected_item is bindable
+        if isinstance(self._selected_item, ViewModelBindable):
+            self._selected_item.on_change(self._update_selected_item_from_bindable)
+
+        # Check if selected_index is bindable
+        if isinstance(self._selected_index, ViewModelBindable):
+            self._selected_index.on_change(self._update_selected_index_from_bindable)
+
+    def _handle_table_data_change(self, new_data, change_type=None, data=None):
+        """Handle different types of table data changes."""
+        self.table_data = new_data
+        if change_type is None:
+            self._refresh_table()
+        elif change_type == BindedListUpdateType.INSERT:
+            self._insert_row(len(self.table_data) - 1, data)
+        elif change_type == BindedListUpdateType.INSERT_AT:
+            index, row = data
+            self._insert_row(index, row)
+        elif change_type == BindedListUpdateType.DELETE_ROW:
+            self._delete_row(data)
+            # Update selected index if the deleted row is before or is the selected row
+            if isinstance(self._selected_index, int) and data <= self._selected_index:
+                if isinstance(self._selected_index, ViewModelBindable):
+                    self._selected_index.set_value(self._selected_index)
+                else: 
+                    self._selected_index -= 1
+        elif change_type == BindedListUpdateType.SET_CELL:
+            row_index, col_index, value = data
+            self._set_cell(row_index, col_index, value)
+        elif change_type == BindedListUpdateType.SETITEM:
+            index, row = data
+            self._update_row(index, row)
+
+    def _update_selected_item_from_bindable(self, new_item):
+        """Update the table selection based on the bindable selected item."""
+        try:
+            index = self.table_data.index(new_item)
+            self._select_row(index)
+            if isinstance(self._selected_index, ViewModelBindable):
+                self._selected_index.set_value(index)
+            else:
+                self._selected_index = index
+        except ValueError:
+            pass
+
+    def _update_selected_index_from_bindable(self, new_index):
+        """Update the table selection based on the bindable selected index."""
+        if 0 <= new_index < len(self.table_data):
+            self._select_row(new_index)
+            if isinstance(self._selected_item, ViewModelBindable):
+                self._selected_item.set_value(self.table_data[new_index])
+            else:
+                self._selected_item = self.table_data[new_index]
+
+    def _select_row(self, index):
+        """Select a row in the table by index."""
+        children = self.el.get_children()
+        if index < len(children):
+            self.el.selection_set(children[index])
+
+    def _update_header(self, new_header):
+        """Update header when the bindable header changes."""
+        self.header = new_header
+        self.el["columns"] = self.header
+        for col in self.header:
+            self.el.heading(col, text=col)
+
+    def _insert_row(self, index, row):
+        """Insert a new row at the specified index."""
+        self.el.insert("", index, values=row)
+
+    def _delete_row(self, index):
+        """Delete a row at the specified index."""
+        children = self.el.get_children()
+        if index < len(children):
+            self.el.delete(children[index])
+
+    def _set_cell(self, row_index, col_index, value):
+        """Set the value of a specific cell."""
+        children = self.el.get_children()
+        if row_index < len(children):
+            item = children[row_index]
+            values = list(self.el.item(item, "values"))
+            values[col_index] = value
+            self.el.item(item, values=values)
+
+    def _update_row(self, index, row):
+        """Update an existing row."""
+        children = self.el.get_children()
+        if index < len(children):
+            self.el.item(children[index], values=row)
+
+    def _refresh_table(self):
+        """Refresh the entire table, including header and data."""
+        # Clear existing data
+        for item in self.el.get_children():
+            self.el.delete(item)
+
+        # Configure columns
+        self.el["columns"] = self.header
+        self.el["show"] = "headings"
+        for col in self.header:
+            self.el.heading(col, text=col)
+            self.el.column(col, width=100)
+
+        # Insert new data
+        for row in self.table_data:
+            self.el.insert("", tk.END, values=row)
+
+    def layout_tk_widget(self, parent):
+        self.el = ttk.Treeview(parent.el, **self.styles)
+        self._refresh_table()
+        self.el.bind('<<TreeviewSelect>>', self._on_select)
+        return self.el
+
+    def _on_select(self, event):
+        """Handle the selection event of the table."""
+        selected_items = self.el.selection()
+        if selected_items:
+            item = selected_items[0]
+            children = self.el.get_children()
+            index = children.index(item)
+            if isinstance(self._selected_index, ViewModelBindable):
+                self._selected_index.set_value(index)
+            else:
+                self._selected_index = index
+            if isinstance(self._selected_item, ViewModelBindable):
+                self._selected_item.set_value(self.table_data[index])
+            else:
+                self._selected_item = self.table_data[index]
