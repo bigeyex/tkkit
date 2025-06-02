@@ -12,10 +12,10 @@ class TKApp:
             self.el.title(title)
 
     def show(self, window):
-        if not isinstance(window, Column):
+        if not isinstance(window, Container):
             raise LayoutException("root element has to be VStack or HStack") 
         self.name_registry = {}
-        main_el = window.show(self)
+        main_el = window.build(self)
         self.el.columnconfigure(0, weight=1)
         self.el.rowconfigure(0, weight=1)
         main_el.grid(row=0, column=0, sticky="wens")
@@ -24,7 +24,7 @@ class TKApp:
         old_widget = self.name_registry[widget_name]
         grid_info = old_widget.el.grid_info()
         old_widget.el.grid_forget()
-        new_el = new_widget.show(old_widget.parent)
+        new_el = new_widget.build(old_widget.parent)
         new_el.grid(row=grid_info['row'], column=grid_info['column'])
         
 

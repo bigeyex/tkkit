@@ -1,23 +1,32 @@
-class ViewModelBindable:
-    def __init__(self, vm, attr_name):
+from tkinter import Variable
+from typing import Callable
+
+class ViewModelBindable[T]:
+    def __init__(self, vm, attr_name:str):
         self.vm = vm
         self.attr_name = attr_name
         self.listeners = []
 
-    def on_change(self, callback):
+    def on_change(self, callback:Callable[[T], None]):
         self.listeners.append(callback)
         return self
     
-    def get_value(self):
+    def get_value(self) -> T:
         return getattr(self.vm, self.attr_name)
+    
+    def set_value(self, new_value:T) -> None:
+        return setattr(self.vm, self.attr_name, new_value)
 
-    def notify(self):
+    def notify(self) -> None:
+        """
+        Notify all listeners that the value has changed.
+        """
         value = getattr(self.vm, self.attr_name)
         # Pass the new value to the listener
         for listener in self.listeners:
             listener(value)
 
-    def connect_tk_var(self, tk_var, true_to_one=False):
+    def connect_tk_var(self, tk_var:Variable, true_to_one=False) -> None:
         # Update Tkinter variable when ViewModelBindable changes
         def update_tk_var(value):
             # Only update tk_var if the value is different
@@ -41,9 +50,9 @@ class ViewModelBindable:
 
 class ViewModel:
     def __init__(self):
-        self._listeners = {}
+        self._listeners = {} # attr_name -> ViewModelBindable
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name:str):
         if name.endswith('_'):
             attr_name = name[:-1]
             if attr_name not in self._listeners:

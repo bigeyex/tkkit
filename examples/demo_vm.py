@@ -6,16 +6,31 @@ vm.text = "Hello"
 
 def button_click():
     vm.text = "world"
+    vm.list_value = "world"
     vm.checked = 1
 
-view = VStack([
-    Button(vm.text_, on_click=button_click),
-    Label(vm.text_),
-    Label(vm.checked_),
-    TextBox(vm.text_),
-    ComboBox(("hello", "world", "all"), vm.text_),
-    ListBox(("hello", "world", "all")),
-    CheckBox("Check Me", checked=vm.checked_)
+view = HStack([
+    VStack([
+        Button(vm.text_, on_click=button_click),
+        Label(vm.text_),
+        Label(vm.checked_),
+        TextBox(vm.text_),
+        ComboBox(("hello", "world", "all"), vm.text_),
+        ListBox(("hello", "world", "all"), value=vm.list_value_),
+        CheckBox("Check Me", checked=vm.checked_),
+        ShowIf(vm.checked_, [
+            Label("Checkbox is checked!!"),
+            Label("Checkbox is checked!!!"),
+        ])
+    ]),
+    VStack([
+        Slider(vm.slider_value_),
+        ProgressBar(vm.slider_value_)
+    ]),
+    VStack([
+        FilePicker(value=vm.file_value_),
+        Label(vm.file_value_)
+    ]),
 ])
 
 app.show(view)
