@@ -3,6 +3,7 @@ from tkkit import *
 app = TKApp('My App')
 vm = ViewModel()
 vm.text = "Hello"
+vm.radio_value="Option 2"
 
 def button_click():
     vm.text = "world"
@@ -21,7 +22,16 @@ view = HStack([
         ShowIf(vm.checked_, [
             Label("Checkbox is checked!!"),
             Label("Checkbox is checked!!!"),
-        ])
+        ]),
+        HStack([
+           Label("Selected Radio"), Label(vm.radio_value_)
+        ]),
+        RadioGroup(value=vm.radio_value_, children=[
+            RadioButton("Option 1", value="Option 1"),
+            RadioButton("Option 2", value="Option 2"),
+            RadioButton("Option 3", value="Option 3"),
+        ]),
+    
     ]),
     VStack([
         Slider(vm.slider_value_),

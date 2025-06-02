@@ -166,5 +166,5 @@ class ViewModel:
             old_value = getattr(self, name)
         object.__setattr__(self, name, value)
         # Use a more robust comparison
-        if old_value != value and (old_value is not None or value is not None) and name in self._listeners:
+        if (value.__class__.__name__ == "DataFrame" or old_value != value and (old_value is not None or value is not None)) and name in self._listeners:
             self._listeners[name].notify()

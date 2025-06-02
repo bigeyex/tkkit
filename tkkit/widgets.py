@@ -222,10 +222,73 @@ class CheckBox(Widget):
     def layout_tk_widget(self, parent):
         return ttk.Checkbutton(parent.el, text=self.text, command=self.on_click, variable=self.var_to_bind, **self.styles)
     
+class RadioGroup(WrapperWidget):
+    def __init__(
+        self,
+        children: List[Widget],
+        value: Optional[Any] = None,
+        on_change: Optional[callable] = None,
+        name: Optional[str] = None,
+        **kwargs
+    ):
+        self._value = value
+        self.on_change = on_change
+        super().__init__(children, name=name, **kwargs)
+
+        # Check if value is bindable
+        if isinstance(self._value, ViewModelBindable):
+            self._value.on_change(self._update_selection_from_bindable)
+
+        # Set up the variable shared by all radio buttons
+        self.var_to_bind = tk.StringVar()
+        if isinstance(self._value, ViewModelBindable):
+            self.var_to_bind.set(self._value.get_value())
+        elif self._value is not None:
+            self.var_to_bind.set(self._value)
+
+        # Configure each radio button
+        for child in self.children:
+            if isinstance(child, RadioButton):
+                child.var_to_bind = self.var_to_bind
+                child.bind_var = lambda: self.var_to_bind
+
+        self.var_to_bind.trace_add("write", self._handle_selection_change)
+
+    def _update_selection_from_bindable(self, new_value):
+        """Update the selected radio button based on the bindable value."""
+        self.var_to_bind.set(new_value)
+
+    def _handle_selection_change(self, *args):
+        """Handle the selection change event and call the on_change callback."""
+        new_value = self.var_to_bind.get()
+        if isinstance(self._value, ViewModelBindable):
+            self._value.set_value(new_value)
+        if self.on_change:
+            self.on_change(new_value)
+
+    def get_value(self):
+        """Get the currently selected value."""
+        return self.var_to_bind.get()
+
+    def set_value(self, value):
+        """Set the selected radio button by value."""
+        self.var_to_bind.set(value)
+
+    def layout_tk_widget(self, parent):
+        self.parent = parent
+        self.name_registry = parent.name_registry
+        frame = tk.Frame(parent.el, **self.styles)
+        for child in self.children:
+            child_el = child.build(self)
+            child_el.pack(anchor='w')
+        self.el = frame
+        return self.el
+
+
 class RadioButton(Widget):
     def __init__(self, text="RadioButton", value=None, name=None, selected=False, on_click=None, **kwargs):
         if value is None:
-           value = text 
+            value = text
         self.text = text
         self.on_click = on_click
         self.value = value
@@ -242,8 +305,16 @@ class RadioButton(Widget):
         return var_to_bind
 
     def layout_tk_widget(self, parent):
-        return ttk.Radiobutton(parent.el, text=self.text, value=self.value, command=self.on_click, variable=self.var_to_bind, **self.styles)
-    
+        return ttk.Radiobutton(
+            parent.el,
+            text=self.text,
+            value=self.value,
+            command=self.on_click,
+            variable=self.var_to_bind,
+            **self.styles
+        )
+
+
 class ComboBox(Widget):
     def __init__(self, values=(), selected=None, name=None, on_change=None, **kwargs):
         self.values = values
@@ -491,15 +562,26 @@ class ShowIf(WrapperWidget):
 class DataTable(Widget):
     def __init__(
         self,
-        header: List[str],
-        table_data: List[List[Any]],
+        header: List[str]=None,
+        table_data: List[List[Any]]=None,
         name=None,
+        data_frame = None,
         selected_item: Optional[Any | ViewModelBindable] = None,
         selected_index: Optional[int | ViewModelBindable] = None,
         **kwargs
     ):
-        self.header = header
-        self.table_data = table_data
+        if data_frame is not None:
+            if isinstance(data_frame, ViewModelBindable):
+                data_frame.on_change(self._update_from_data_frame)
+                df = data_frame.get_value()
+            else:
+                df = data_frame
+            self.header = df.columns.tolist()
+            self.table_data = df.values.tolist()
+        else:
+            self.header = header
+            self.table_data = table_data
+
         self._selected_item = selected_item
         self._selected_index = selected_index
         super().__init__(name=name, **kwargs)
@@ -521,6 +603,12 @@ class DataTable(Widget):
         # Check if selected_index is bindable
         if isinstance(self._selected_index, ViewModelBindable):
             self._selected_index.on_change(self._update_selected_index_from_bindable)
+
+    def _update_from_data_frame(self, new_df):
+        """Update table when the bindable DataFrame changes."""
+        self.header = new_df.columns.tolist()
+        self.table_data = new_df.values.tolist()
+        self._refresh_table()
 
     def _handle_table_data_change(self, new_data, change_type=None, data=None):
         """Handle different types of table data changes."""
